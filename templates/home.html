@@ -27,6 +27,7 @@
   {#
   <hr /> #}
 
+  {% if section.subsections | length %}
   <div class="posts">
     <h4>Sections</h4>
     {# {% for page in section.pages %}
@@ -65,5 +66,6 @@
 
     {% endfor %}
   </div>
+  {% endif %}
 </div>
 {% endblock content %}
