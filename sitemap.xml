@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+        <loc>https://zimbopro.github.io/</loc>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/blog/</loc>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/blog/moving-data-from-mongo-to-sql-with-rust/</loc>
+        <lastmod>2025-02-08</lastmod>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/tags/</loc>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/tags/database/</loc>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/tags/mongodb/</loc>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/tags/rust/</loc>
+    </url>
+    <url>
+        <loc>https://zimbopro.github.io/tags/sql/</loc>
+    </url>
+</urlset>

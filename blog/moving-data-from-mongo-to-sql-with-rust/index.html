@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+
+    <!-- Enable responsiveness on mobile devices-->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+
+    <title>ZimboPro Blog</title>
+    <meta name="description" content="My journey of moving data from MongoDB to SQLite and Postgres using Rust">
+
+    
+    
+
+    
+<meta property="og:title" content="Moving data from MongoDB to SQL with Rust">
+<meta property="og:description" content="My journey of moving data from MongoDB to SQLite and Postgres using Rust">
+<meta property="og:url" content="https:&#x2F;&#x2F;zimbopro.github.io&#x2F;blog&#x2F;moving-data-from-mongo-to-sql-with-rust&#x2F;">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ZimboPro Blog">
+
+
+
+    <!-- css -->
+    <noscript>
+        <style>
+            .theme-switcher {
+                display: none;
+            }
+        </style>
+    </noscript>
+    <link rel="stylesheet" href="/reset.css">
+    <link rel="stylesheet" href="/feather.css">
+    
+    
+    <link rel="stylesheet" href="/syntax-theme-light.css" media="screen" />
+    <link rel="stylesheet" href="/syntax-theme-dark.css" media="screen and (prefers-color-scheme: dark)" />
+    
+    
+
+    <link rel="stylesheet" id="syntax" />
+
+    
+
+    
+
+    
+    
+</head>
+
+<body >
+    <div class="root">
+
+        <nav>
+            <div class="flex padded">
+                <div class="flex fill vcenter">
+                    <a href="/">
+                        <h4>ZimboPro Blog</h4>
+                    </a>
+                </div>
+                
+                <button class="theme-switcher"></button>
+                
+            </div>
+            
+            <div class='header-image' style='background-image: url(/theme_images/default.gif);'>
+            </div>
+            
+        </nav>
+
+
+
+        
+<div class='container'>
+	<section class="post">
+		<div class="title-and-info">
+			<h2>Moving data from MongoDB to SQL with Rust</h2>
+			<div class="info">
+				<span>2025 Feb 08</span>
+
+				
+
+				
+			</div>
+		</div>
+		<article>
+			
+			
+			
+			
+
+			
+
+
+			<h2 id="intro">Intro</h2>
+<p>In 2024, I started helping a friend to manage her website and server. However, the database being used was MongoDB and the tooling that she wanted to use such as PowerBI prefers SQL databases and not Mongo. There are tools that allow it to work but she preferred to have the database converted to SQL so that she would have access to a larger amount of tools and ecosystem.</p>
+<p>So I agreed to help her and this blog is to share what I learnt and the roadblocks I encountered.</p>
+<h2 id="available-tools">Available tools</h2>
+<p>Like most software engineers, I first checked to see if there are existing tools or repos that will be able to do this conversion. Why reinvent the wheel if it already exists?</p>
+<p>I did manage to find tools such as <a href="https://airbyte.com/">Airbyte</a> and <a href="https://estuary.dev/">Estuary</a>. However, there was always something causing these tools to fail. For example, the one required that there be 3 instances of the database. I suppose so that it doesn't hog all the resources, however, there was only 1 instance available. I am no expert with MongoDB and I did not manage to increase the number of instances.</p>
+<p>So those tools were unfortunately not applicable to my scenario.</p>
+<p>I checked Github repos after that but did not find any that were promising.</p>
+<h2 id="manual-method-it-is">Manual method it is</h2>
+<p>So all that is left is the manual method, or rather a custom tool. Fortunately, with this conversion I did have access to the server code which was written in NodeJS and used ExpressJS and the mongoose package. So fortunately I was able to get the schema. However, as one might know, the schema for MongoDB is by no means strictly enforced. Or at least not in the server code.</p>
+<p>So I did what any sane developer would do, I wrote some code to get all the <em>fields</em> for each <em>table</em> in MongoDB. Well, I managed to get the list of <em>tables</em> as well as the <em>fields</em> (there might be extra steps or tooling but I cannot remember exactly).</p>
+<h2 id="getting-the-data">Getting the Data</h2>
+<p>Since I have gotten all the metadata, I can use the schemas and the fields to create structs in Rust and then extract the data right? Right?</p>
+<p>Um, not quite.</p>
+<p>So when I wrote the custom tool to get the data directly from MongoDB with the official MongoDB Rust client I failed. It could be my lack of knowledge about MongoDB and the client but I was not able to get the data at all.</p>
+<p>So what now?</p>
+<h2 id="multi-step-process">Multi-step process</h2>
+<p>So is there a method to export the data from MongoDB? Yes, there is <a href="https://www.mongodb.com/docs/database-tools/mongodump/">mongodump</a> and it did exactly what I wanted. It gave me the following data:</p>
+<pre class="z-code"><code><span class="z-text z-plain">-- data
+</span><span class="z-text z-plain">  -- dump
+</span><span class="z-text z-plain">    -- db-name
+</span><span class="z-text z-plain">      -- table.bson
+</span><span class="z-text z-plain">      -- table-1.bson
+</span><span class="z-text z-plain">      -- table-2.bson
+</span></code></pre>
+<p>So lets read those files with Rust.</p>
+<p>...</p>
+<p>Um, at least when I wrote the tool there was no crate available.</p>
+<p>So convert to JSON?</p>
+<p>Thank goodness, there is <a href="https://www.mongodb.com/docs/database-tools/bsondump/">bsondump</a> which does exactly that. So a quick script later and I know have JSON. Great.</p>
+<pre class="z-code"><code><span class="z-text z-plain">-- data
+</span><span class="z-text z-plain">  -- dump
+</span><span class="z-text z-plain">    -- db-name
+</span><span class="z-text z-plain">      -- table.bson
+</span><span class="z-text z-plain">      -- table.json &lt;-
+</span><span class="z-text z-plain">      -- table-1.bson
+</span><span class="z-text z-plain">      -- table-1.json &lt;-
+</span><span class="z-text z-plain">      -- table-2.bson
+</span><span class="z-text z-plain">      -- table-2.json &lt;-
+</span></code></pre>
+<h2 id="extracting-the-data">Extracting the data</h2>
+<p>So just using Serde-Json will allow to get the data. Easy-peasy lemon-squeezy. At least it should have been.</p>
+<p>Firstly, the JSON files where structured weirdly.</p>
+<pre data-lang="JSON" class="language-JSON z-code"><code class="language-JSON" data-lang="JSON"><span class="z-source z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>_id<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>$oid<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>_id<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>$oid<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-key z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>_id<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>$oid<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>_id<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>$oid<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-invalid z-illegal z-expected-mapping-separator z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></span></code></pre>
+<p>I had expected the files to be JSON arrays but that was not the case. So before deserializing the data, I first had to read the file and split it into lines. After that I was able to deserialize.</p>
+<p>One bug I had though was that some files would be empty. Turns out, even if there was no data in the table, a file would still be created. So just adding a simple check solved it.</p>
+<h3 id="data-structure">Data structure</h3>
+<p>So remember earlier I mentioned that the schema is not really enforced? So that came back to bite me. I had some really unexpected data conversion issues but at the same time it is understandable since MongoDB accepts anything.</p>
+<p>The worst one, was the profile table that had an array of images which are all URL links. No problem, that was by design. But what I did not expect was the actual data.</p>
+<pre data-lang="JSON" class="language-JSON z-code"><code class="language-JSON" data-lang="JSON"><span class="z-source z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-json">  <span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-json">  </span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>images<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span> </span><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-sequence z-json"><span class="z-punctuation z-section z-sequence z-begin z-json">[</span>
+</span></span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-sequence z-json">    <span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>https://url.to/some/image.jpg<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span><span class="z-punctuation z-separator z-sequence z-json">,</span>
+</span></span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-sequence z-json">    <span class="z-constant z-language z-json">null</span><span class="z-punctuation z-separator z-sequence z-json">,</span>
+</span></span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-sequence z-json">    <span class="z-constant z-language z-json">false</span>
+</span></span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-sequence z-json">  <span class="z-punctuation z-section z-sequence z-end z-json">]</span></span><span class="z-punctuation z-separator z-mapping z-pair z-json">,</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json">  <span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></code></pre>
+<p>That was unexpected. So now I had to tweak the struct to be able to parse the JSON.</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">Profile</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  ...
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  <span class="z-storage z-modifier z-rust">pub</span> <span class="z-variable z-other z-member z-rust">images</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Vec</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Option</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>Bson<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span><span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  <span class="z-storage z-modifier z-rust">pub</span> <span class="z-variable z-other z-member z-rust">value</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-generic z-rust"><span class="z-support z-type z-rust">Option</span><span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span>Bson<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  ...
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<p>Some other gotchas was numbers. I also had to parse them as <code>Bson</code> objects as can be seen above, before converting into into the appropriate number format. But that was because they are stored a bit differently when converted from Bson files to JSON.</p>
+<pre data-lang="JSON" class="language-JSON z-code"><code class="language-JSON" data-lang="JSON"><span class="z-source z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-json">  <span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-json">  </span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>value<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-meta z-mapping z-json"><span class="z-punctuation z-section z-mapping z-begin z-json">{</span></span><span class="z-meta z-mapping z-key z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>$numberInt<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span></span><span class="z-meta z-mapping z-json"><span class="z-punctuation z-separator z-mapping z-key-value z-json">:</span></span><span class="z-meta z-mapping z-value z-json"><span class="z-string z-quoted z-double z-json"><span class="z-punctuation z-definition z-string z-begin z-json">&quot;</span>4500<span class="z-punctuation z-definition z-string z-end z-json">&quot;</span></span><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span><span class="z-punctuation z-separator z-mapping z-pair z-json">,</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json">  <span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span><span class="z-invalid z-illegal z-expected-mapping-key z-json">.</span>
+</span></span><span class="z-source z-json"><span class="z-meta z-mapping z-value z-json"><span class="z-punctuation z-section z-mapping z-end z-json">}</span></span>
+</span></code></pre>
+<p>Fortunately, dates was possible to convert directly with the Bson crate.</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-struct z-rust">struct</span> </span><span class="z-meta z-struct z-rust"><span class="z-entity z-name z-struct z-rust">Profile</span> </span><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  ...
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  <span class="z-meta z-annotation z-rust"><span class="z-punctuation z-definition z-annotation z-rust">#</span><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-variable z-annotation z-rust">serde</span><span class="z-meta z-annotation z-parameters z-rust"><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span></span><span class="z-meta z-annotation z-parameters z-rust"><span class="z-meta z-group z-rust">rename <span class="z-keyword z-operator z-rust">=</span> <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>updatedAt<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span></span><span class="z-meta z-annotation z-parameters z-rust"><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  <span class="z-meta z-annotation z-rust"><span class="z-punctuation z-definition z-annotation z-rust">#</span><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-variable z-annotation z-rust">serde</span><span class="z-meta z-annotation z-parameters z-rust"><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span></span><span class="z-meta z-annotation z-parameters z-rust"><span class="z-meta z-group z-rust">with <span class="z-keyword z-operator z-rust">=</span> <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>bson::serde_helpers::chrono_datetime_as_bson_datetime<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span></span><span class="z-meta z-annotation z-parameters z-rust"><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span></span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  <span class="z-storage z-modifier z-rust">pub</span> <span class="z-variable z-other z-member z-rust">updated_at</span><span class="z-punctuation z-separator z-type z-rust">:</span> <span class="z-meta z-path z-rust">chrono<span class="z-punctuation z-accessor z-rust">::</span></span><span class="z-meta z-generic z-rust">DateTime<span class="z-punctuation z-definition z-generic z-begin z-rust">&lt;</span><span class="z-meta z-path z-rust">chrono<span class="z-punctuation z-accessor z-rust">::</span></span>Utc<span class="z-punctuation z-definition z-generic z-end z-rust">&gt;</span></span>,
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust">  ...
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-struct z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span></code></pre>
+<h2 id="ids">IDs</h2>
+<p>This requires its own section. In MongoDB, ObjectID's are used and not UUIDs that are often used in SQL databases. And unfortunately no <em>official</em> way to convert between them. This was quite the headache as I wanted to ensure the links and relations between tables was maintained in the conversion and the easiest way would be to directly converted the IDs.</p>
+<p>Some Googling later, I managed to find (after several hours, possibly even days) a <a href="https://github.com/eadbox/bson-objectid-to-uuid">simple</a> way (after I tried to create a custom function). It is written in Ruby so had to tweak it for Rust. ObjectId's are 24 characters long and by understanding the UUID structure you can do the following.</p>
+<pre data-lang="rust" class="language-rust z-code"><code class="language-rust" data-lang="rust"><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-function z-rust"><span class="z-storage z-modifier z-rust">pub</span> <span class="z-storage z-type z-function z-rust">fn</span> </span><span class="z-entity z-name z-function z-rust">convert_bson_id_to_uuid</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-begin z-rust">(</span><span class="z-variable z-parameter z-rust">bson_id</span><span class="z-punctuation z-separator z-rust">:</span> <span class="z-keyword z-operator z-rust">&amp;</span><span class="z-storage z-type z-rust">str</span></span><span class="z-meta z-function z-rust"><span class="z-meta z-function z-parameters z-rust"><span class="z-punctuation z-section z-parameters z-end z-rust">)</span></span></span></span><span class="z-meta z-function z-rust"> <span class="z-meta z-function z-return-type z-rust"><span class="z-punctuation z-separator z-rust">-&gt;</span> <span class="z-meta z-path z-rust">uuid<span class="z-punctuation z-accessor z-rust">::</span></span>Uuid</span> </span><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-begin z-rust">{</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">  <span class="z-storage z-type z-rust">let</span> s <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-support z-macro z-rust">format!</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust">
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span><span class="z-constant z-other z-placeholder z-rust">{}</span><span class="z-constant z-other z-placeholder z-rust">{}</span>-<span class="z-constant z-other z-placeholder z-rust">{}</span>-<span class="z-constant z-other z-placeholder z-rust">{}</span><span class="z-constant z-other z-placeholder z-rust">{}</span>-<span class="z-constant z-other z-placeholder z-rust">{}</span><span class="z-constant z-other z-placeholder z-rust">{}</span>-<span class="z-constant z-other z-placeholder z-rust">{}</span><span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-separator z-rust">,</span>
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-constant z-other z-rust">UUID_PREFIX</span><span class="z-punctuation z-separator z-rust">,</span>
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>bson_id<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-constant z-numeric z-integer z-decimal z-rust">0</span><span class="z-keyword z-operator z-range z-rust">..</span><span class="z-constant z-numeric z-integer z-decimal z-rust">2</span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span><span class="z-punctuation z-separator z-rust">,</span> <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> Prefix + first 2 oid digits
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>bson_id<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-constant z-numeric z-integer z-decimal z-rust">2</span><span class="z-keyword z-operator z-range z-rust">..</span><span class="z-constant z-numeric z-integer z-decimal z-rust">6</span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span><span class="z-punctuation z-separator z-rust">,</span> <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> Next 4 oid digits
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-constant z-other z-rust">UUID_VERSION</span><span class="z-punctuation z-separator z-rust">,</span>
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>bson_id<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-constant z-numeric z-integer z-decimal z-rust">6</span><span class="z-keyword z-operator z-range z-rust">..</span><span class="z-constant z-numeric z-integer z-decimal z-rust">9</span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span><span class="z-punctuation z-separator z-rust">,</span> <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> Version (0x4) + next 3 oid digits
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-constant z-other z-rust">UUID_VARIANT</span><span class="z-punctuation z-separator z-rust">,</span>
+</span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>bson_id<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-constant z-numeric z-integer z-decimal z-rust">9</span><span class="z-keyword z-operator z-range z-rust">..</span><span class="z-constant z-numeric z-integer z-decimal z-rust">12</span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span><span class="z-punctuation z-separator z-rust">,</span>  <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> Variant (0b101) + next 3 oid digits
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">    <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>bson_id<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">[</span><span class="z-constant z-numeric z-integer z-decimal z-rust">12</span><span class="z-keyword z-operator z-range z-rust">..</span><span class="z-constant z-numeric z-integer z-decimal z-rust">24</span><span class="z-punctuation z-section z-group z-end z-rust">]</span></span>  <span class="z-comment z-line z-double-slash z-rust"><span class="z-punctuation z-definition z-comment z-rust">//</span> Last 12 oid digits
+</span></span></span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"><span class="z-meta z-group z-rust">  <span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust">  <span class="z-meta z-path z-rust">uuid<span class="z-punctuation z-accessor z-rust">::</span></span><span class="z-meta z-path z-rust">Uuid<span class="z-punctuation z-accessor z-rust">::</span></span>parse_str<span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span><span class="z-keyword z-operator z-bitwise z-rust">&amp;</span>s</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span><span class="z-punctuation z-accessor z-dot z-rust">.</span><span class="z-support z-function z-rust">unwrap</span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-begin z-rust">(</span></span><span class="z-meta z-group z-rust"><span class="z-punctuation z-section z-group z-end z-rust">)</span></span>
+</span></span></span><span class="z-source z-rust"><span class="z-meta z-function z-rust"><span class="z-meta z-block z-rust"></span><span class="z-meta z-block z-rust"><span class="z-punctuation z-section z-block z-end z-rust">}</span></span></span>
+</span><span class="z-source z-rust">
+</span><span class="z-source z-rust"><span class="z-storage z-type z-rust">const</span> <span class="z-constant z-other z-rust">UUID_PREFIX</span><span class="z-punctuation z-separator z-rust">:</span> <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span><span class="z-storage z-type z-rust">str</span> <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>0bdaea<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+</span><span class="z-source z-rust"><span class="z-storage z-type z-rust">const</span> <span class="z-constant z-other z-rust">UUID_VERSION</span><span class="z-punctuation z-separator z-rust">:</span> <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span><span class="z-storage z-type z-rust">str</span> <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>4<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+</span><span class="z-source z-rust"><span class="z-storage z-type z-rust">const</span> <span class="z-constant z-other z-rust">UUID_VARIANT</span><span class="z-punctuation z-separator z-rust">:</span> <span class="z-keyword z-operator z-bitwise z-rust">&amp;</span><span class="z-storage z-type z-rust">str</span> <span class="z-keyword z-operator z-assignment z-rust">=</span> <span class="z-string z-quoted z-double z-rust"><span class="z-punctuation z-definition z-string z-begin z-rust">&quot;</span>a<span class="z-punctuation z-definition z-string z-end z-rust">&quot;</span></span><span class="z-punctuation z-terminator z-rust">;</span>
+</span></code></pre>
+<h2 id="inserting-into-a-sql-database">Inserting into a SQL database</h2>
+<p>To make life simpler for myself, I used an ORM to create the database and insert the values. I originally was going to use Diesel but I was simultaneously rewriting the server in Rust using <a href="https://loco.rs/">Loco</a> which uses SeaORM. So I used that instead. Fortunately I started planning what the database would like and had generated the structs from when I created the database. So I was able to reuse those structs after a copy-paste.</p>
+<p>While planning the database, I had to split the images into a separate table. SeaORM supports SQLite and Postgres. While Postgres does support arrays, SQLite does not. I could have just joined the array into a single string and separated the values with commas but I decided to do it properly.</p>
+<p>So in the custom tool I had to map the MongoDB structure to the SQL structure while also cleaning up the data and converting the values to the required format. Thank goodness for the <em>From</em> trait, it did make life easier.</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>So what did I learn? This conversion took me much longer than I anticipated since I was doing this after hours and amongst all my other responsibilities. This helped me to understand MongoDB a bit better.</p>
+<p>However, the biggest take away for me was why I don't plan on ever using MongoDB (or DynamoDB since they are similar) in the future unless the client demands it. I prefer statically typed code (hence why I love Rust), as well as strongly typed datasources. So, MongoDB unfortunately is not for me.</p>
+<p>I do see the appeal but if not managed properly it can quickly become a nightmare.</p>
+<h2 id="note">Note</h2>
+<p>I am writing this blog several months after doing the conversion so I either forgot some of the steps I took or no longer have the code when trying a few things. However, this blog article should give some direction to anyone in the future if they have to convert MongoDB to SQL.</p>
+
+			
+
+
+		</article>
+	</section>
+	
+	<div id="cusdis">
+		
+	</div>
+</div>
+
+
+        <footer>
+            
+            <p>
+                Feather theme by <a href="https://doomy.org">doomy</a>&nbsp;&nbsp;-&nbsp;&nbsp; Built with <a
+                    href="https://getzola.org">Zola</a>
+            </p>
+            
+        </footer>
+    </div>
+    
+    <script>
+        function change_theme(theme) {
+            if (theme == "light") {
+                document.body.classList.remove("dark");
+                document.body.classList.add("light");
+                document.querySelector('#syntax').href = '/syntax-theme-light.css';
+            } else if (theme == "dark") {
+                document.body.classList.add("dark");
+                document.body.classList.remove("light");
+                document.querySelector('#syntax').href = '/syntax-theme-dark.css';
+            }
+            localStorage.setItem("theme", theme);
+        }
+
+        window.addEventListener('load', () => {
+            // Select the button
+            const theme = (function () {
+                const stored = localStorage.getItem("theme");
+                if (stored == "null") {
+                    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+                        return "dark";
+                    } else {
+                        return "light";
+                    }
+                } else {
+                    return stored;
+                }
+            })();
+
+            change_theme(theme);
+
+            // Listen for a click on the button
+            document.querySelector(".theme-switcher").addEventListener("click", function () {
+                if (!document.body.classList.contains("dark")) {
+                    change_theme("dark");
+                } else {
+                    change_theme("light");
+                }
+            });
+
+        });
+    </script>
+    
+    <script src="/js/footnote.js"></script>
+</body>
+
+</html>
